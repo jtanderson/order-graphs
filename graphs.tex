@@ -1,0 +1,33 @@
+\documentclass[]{article}
+
+\usepackage{ytableau}
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+
+\begin{document}
+
+\begin{tikzpicture}[->, >=stealth', shorten >=1pt, auto, node distance=2.8cm, semithick]
+  \node (top) at (0,0) {$\emptyset$};
+  \node [below of=top] (one) {\ydiagram{1}};
+  \node [below left of=one] (one-down) {\ydiagram{1,1}};
+  \node [below right of=one] (one-across) {\ydiagram{2}};
+  \node [below right of=one-down] (angle) {\ydiagram{2,1}};
+  \node [below of=angle] (bottom) {\ydiagram{2,2}};
+
+  \draw (top) -- (one);
+  \draw (one) -- (one-across);
+  \draw (one) -- (one-down);
+  \draw (one-down) -- (angle);
+  \draw (angle) -- (bottom);
+  \draw (one-across) -- (angle);
+\end{tikzpicture}
+
+    \iffalse
+    \ytableausetup{centertableaux}
+    \begin{ytableau}
+      a & d & f \\
+      b & e & g \\
+      c
+    \end{ytableau}
+    \fi
+\end{document}
