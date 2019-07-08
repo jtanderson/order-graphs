@@ -13,6 +13,7 @@
 
 # Executables
 *.exe
+main
 
 # DUB
 .dub
@@ -23,4 +24,12 @@ docs/
 # Code coverage
 *.lst
 
+# Vim swap files
 *.swp
+
+# LaTeX stuff
+*.aux
+*.bbl
+*.synctex.gz
+*.pdf
+*.log
