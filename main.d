@@ -9,6 +9,10 @@
  */
 
 import std.stdio : write, writeln, writefln;
+import std.conv : parse;
+import std.format : format;
+import std.file : read, write, exists, readText;
+import std.string : split;
 
 /*
    A tuple of integers capturing the structure of a young diagram
@@ -23,11 +27,20 @@ struct Graph {
   }
 
   int n, k;
+  int cols;
 
   // record which nodes are at which level in the graph
   node*[][] nodes;
 
+  int[int[][2]] A;
+
   node* root;
+
+  void fillMatrix(int k, int n){
+    this.n = n;
+    this.k = k;
+    this.cols = n - k;
+  }
 
   this(int k, int n){
     this.n = n;
@@ -55,7 +68,7 @@ struct Graph {
         cursor = nodes[level][level_node];
 
         // loop over the rows of cursor, at most k of them
-        foreach ( row; 0 .. k ){
+        foreach( row; 0 .. k ){
           // tmp is the next possible ydiagram, mutated from cursor
           // start tmp as a new node to avoid dup edges
           auto tmp = new node;
@@ -78,7 +91,11 @@ struct Graph {
           }
         }
       }
+      write("Finised level: ", level);
+      writeln(" -- Level size: ", nodes[level].length);
     }
+    assert(nodes[$-1].length == 1);
+    assert(isFull(nodes[$-1][$-1]));
   }
 
   void print(){
@@ -103,9 +120,27 @@ struct Graph {
     return null;
   }
 
+  void saveToTex(){
+    string fname = format!"graph-%s-%s.tex"(k, n);
+    scope(exit){
+      assert(exists(fname));
+    }
+
+    string nodes_tex = "";
+    string edges_tex = "";
+    foreach( level; 0 .. nodes.length ){
+      foreach( n; 0 .. nodes[level].length ){
+        nodes_tex ~= "\n";
+      }
+    }
+
+    string tmplt = readText(fname);
+    auto templts = tmplt.split("@@@");
+  }
+
   // all rows are used
   bool isRowFull(node* n){
-    return n.yd[$] > 0;
+    return n.yd[$-1] > 0;
   }
 
   // all cols are used
@@ -115,14 +150,28 @@ struct Graph {
 
   // all spaces are full
   bool isFull(node* n){
-    return n.yd[$] == this.n - this.k;
+    return n.yd[$-1] == this.n - this.k;
   }
 }
 
+int main(string[] args){
+  //Graph g = Graph(args[1],args[2]);
+  int k,n;
 
+  if( args.length < 3 ){
+    writeln("Not enough arguments! Need k and n.");
+    return 1;
+  }
 
-int main(){
-  Graph g = Graph(2,5);
+  k = parse!int(args[1]);
+  n = parse!int(args[2]);
+
+  if( k >= n ){
+    writeln("Invalid input: k < n required");
+    return 2;
+  }
+  
+  Graph g = Graph(k,n);
 
   g.print();
 
