@@ -1,4 +1,4 @@
-CXX=dmd
+CXX=dmd -g
 CXXFLAGS=
 
 all: main

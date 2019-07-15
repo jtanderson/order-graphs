@@ -9,10 +9,12 @@
  */
 
 import std.stdio : write, writeln, writefln;
-import std.conv : parse;
+import std.conv : parse, to;
 import std.format : format;
-import std.file : read, write, exists, readText;
+import std.file : read, fout = write, exists, readText;
 import std.string : split;
+import std.algorithm : map;
+import std.array : join;
 
 /*
    A tuple of integers capturing the structure of a young diagram
@@ -24,6 +26,10 @@ struct Graph {
     ydiagram yd;
     node*[] downs;
     node* up;
+
+    string toStrTuple(){
+      return yd.map!(x => to!string(x)).join(",");
+    }
   }
 
   int n, k;
@@ -121,21 +127,48 @@ struct Graph {
   }
 
   void saveToTex(){
-    string fname = format!"graph-%s-%s.tex"(k, n);
-    scope(exit){
-      assert(exists(fname));
-    }
+    string fname = format!"graphs/graph-%s-%s.tex"(k, n);
+    scope(exit) assert(exists(fname));
 
-    string nodes_tex = "";
-    string edges_tex = "";
-    foreach( level; 0 .. nodes.length ){
-      foreach( n; 0 .. nodes[level].length ){
-        nodes_tex ~= "\n";
+    string nodeFmt = r"\node [%s %s of=%s] (%s) {\ydiagram{%s}};";
+
+    string nodesTex = "";
+    string edgesTex = "";
+    string prevLeft = "top";
+    bool   topHalf  = true;
+    string side     = "";
+    string name, prevName;
+
+    foreach( level; 1 .. nodes.length ){
+      // pre-load the first one
+
+      side = topHalf ? "left" : "right";
+
+      name = format("node-%s-%s", level, 1);
+      prevName = name;
+
+      nodesTex ~= format(nodeFmt, "below", side, prevLeft, name, "dims");
+      nodesTex ~= "\n";
+      prevLeft = name;
+
+      foreach( n; 1 .. nodes[level].length ){
+        name = format("node-%s-%s", level, 1);
+        nodesTex ~= format(nodeFmt, "", "right", prevName, name, nodes[level][n].toStrTuple());
+        nodesTex ~= "\n";
+        prevName = name;
+        // TOOD: edges
       }
     }
 
-    string tmplt = readText(fname);
+    writeln(nodesTex);
+
+    string tmplt = readText("template.tex");
     auto templts = tmplt.split("@@@");
+
+    fout(fname, templts[0]);
+    fout(fname, nodesTex);
+    fout(fname, edgesTex);
+    fout(fname, templts[1]);
   }
 
   // all rows are used
@@ -174,6 +207,8 @@ int main(string[] args){
   Graph g = Graph(k,n);
 
   g.print();
+
+  g.saveToTex();
 
   return 0;
 }
