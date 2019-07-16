@@ -26,9 +26,14 @@ struct Graph {
     ydiagram yd;
     node*[] downs;
     node* up;
+    ulong[2] coords;
 
     string toStrTuple(){
       return yd.map!(x => to!string(x)).join(",");
+    }
+
+    string getTexName(){
+      return format("node-%s-%s", coords[0], coords[1]);
     }
   }
 
@@ -91,6 +96,7 @@ struct Graph {
             if( found ){
               cursor.downs ~= found;
             } else {
+              tmp.coords = [level+1, nodes[level+1].length];
               nodes[level+1] ~= tmp;
               cursor.downs ~= tmp;
             }
@@ -131,6 +137,7 @@ struct Graph {
     scope(exit) assert(exists(fname));
 
     string nodeFmt = r"\node [%s %s of=%s] (%s) {\ydiagram{%s}};";
+    string edgeFmt = r"\draw (%s) -- (%s);";
 
     string nodesTex = "";
     string edgesTex = "";
@@ -144,31 +151,42 @@ struct Graph {
 
       side = topHalf ? "left" : "right";
 
-      name = format("node-%s-%s", level, 1);
+      name = nodes[level][0].getTexName();
       prevName = name;
 
-      nodesTex ~= format(nodeFmt, "below", side, prevLeft, name, "dims");
+      nodesTex ~= format(nodeFmt, "below", side, prevLeft, name, nodes[level][0].toStrTuple());
       nodesTex ~= "\n";
       prevLeft = name;
 
+      foreach( edge; nodes[level][0].downs ){
+        edgesTex ~= format(edgeFmt, name, edge.getTexName());
+        edgesTex ~= "\n";
+      }
+
       foreach( n; 1 .. nodes[level].length ){
-        name = format("node-%s-%s", level, 1);
+        name = nodes[level][n].getTexName();
         nodesTex ~= format(nodeFmt, "", "right", prevName, name, nodes[level][n].toStrTuple());
         nodesTex ~= "\n";
         prevName = name;
-        // TOOD: edges
+
+        foreach( edge; nodes[level][n].downs ){
+          edgesTex ~= format(edgeFmt, name, edge.getTexName());
+          edgesTex ~= "\n";
+        }
+      }
+
+      if ( level >= nodes.length/2 ){
+        topHalf = false;
       }
     }
 
     writeln(nodesTex);
+    writeln(edgesTex);
 
     string tmplt = readText("template.tex");
     auto templts = tmplt.split("@@@");
 
-    fout(fname, templts[0]);
-    fout(fname, nodesTex);
-    fout(fname, edgesTex);
-    fout(fname, templts[1]);
+    fout(fname, templts[0] ~ nodesTex ~ edgesTex ~ templts[1]);
   }
 
   // all rows are used
