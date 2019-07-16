@@ -35,6 +35,14 @@ struct Graph {
     string getTexName(){
       return format("node-%s-%s", coords[0], coords[1]);
     }
+
+    ydiagram getReduced(){
+      ydiagram tmp = yd[1 .. $];
+      tmp[] -= 1;
+      tmp ~= [0];
+      writefln("Got reduced ydiagram: (%s)", tmp.map!(x => to!string(x)).join(","));
+      return tmp;
+    }
   }
 
   int n, k;
@@ -102,6 +110,20 @@ struct Graph {
             }
           }
         }
+
+        // TODO: this is ridiculous... stop using pointers
+        // and start using the yd to identify nodes
+        if( isRowFull(cursor) && isColFull(cursor) ){
+          ydiagram red = cursor.getReduced();
+          foreach( j; 0 .. level ){
+            foreach( l; 0 .. nodes[j].length ){
+              if( nodes[j][l].yd == red ){
+                cursor.up = nodes[j][l];
+                //break; // sigh, only breaks one level
+              }
+            }
+          }
+        }
       }
       write("Finised level: ", level);
       writeln(" -- Level size: ", nodes[level].length);
@@ -141,11 +163,12 @@ struct Graph {
 
     string nodesTex = "";
     string edgesTex = "";
-    string prevLeft = "top";
+    string prevLeft = "node-0-0";
     bool   topHalf  = true;
     string side     = "";
     string name, prevName;
 
+    // For every level of the graph...
     foreach( level; 1 .. nodes.length ){
       // pre-load the first one
 
@@ -158,19 +181,36 @@ struct Graph {
       nodesTex ~= "\n";
       prevLeft = name;
 
+      // do the down arrows
       foreach( edge; nodes[level][0].downs ){
         edgesTex ~= format(edgeFmt, name, edge.getTexName());
         edgesTex ~= "\n";
       }
 
+      // add the up arrow
+      if( nodes[level][0].up ){
+        string upEdge = format(edgeFmt, name, nodes[level][0].up.getTexName());
+        edgesTex ~= upEdge;
+        edgesTex ~= "\n";
+      }
+
+      // For each node in the level...
       foreach( n; 1 .. nodes[level].length ){
         name = nodes[level][n].getTexName();
         nodesTex ~= format(nodeFmt, "", "right", prevName, name, nodes[level][n].toStrTuple());
         nodesTex ~= "\n";
         prevName = name;
 
+        // do the down arrows
         foreach( edge; nodes[level][n].downs ){
           edgesTex ~= format(edgeFmt, name, edge.getTexName());
+          edgesTex ~= "\n";
+        }
+
+        // add the up arrow
+        if( nodes[level][n].up ){
+          string upEdge = format(edgeFmt, name, nodes[level][n].up.getTexName());
+          edgesTex ~= upEdge;
           edgesTex ~= "\n";
         }
       }
@@ -189,6 +229,12 @@ struct Graph {
     fout(fname, templts[0] ~ nodesTex ~ edgesTex ~ templts[1]);
   }
 
+
+  // all spaces are full
+  bool isFull(node* n){
+    return n.yd[$-1] == this.n - this.k;
+  }
+
   // all rows are used
   bool isRowFull(node* n){
     return n.yd[$-1] > 0;
@@ -196,12 +242,7 @@ struct Graph {
 
   // all cols are used
   bool isColFull(node* n){
-    return n.yd[0] > 0; 
-  }
-
-  // all spaces are full
-  bool isFull(node* n){
-    return n.yd[$-1] == this.n - this.k;
+    return n.yd[0] == this.n-this.k; 
   }
 }
 
