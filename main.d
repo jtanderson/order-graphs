@@ -37,12 +37,25 @@ struct Graph {
     }
 
     ydiagram getReduced(){
-      ydiagram tmp = yd[1 .. $];
+      ydiagram tmp = yd[1 .. $].dup;
       tmp[] -= 1;
       tmp ~= [0];
-      writefln("Got reduced ydiagram: (%s)", tmp.map!(x => to!string(x)).join(","));
+      writefln("Reduced ydiagram of (%s) is (%s)", 
+          yd.map!(x => to!string(x)).join(","),
+          tmp.map!(x => to!string(x)).join(","));
       return tmp;
     }
+
+    ydiagram getTwoReduced(){
+      ydiagram tmp = yd[2 .. $].dup;
+      tmp[] -= 2;
+      tmp ~= [0,0];
+      writefln("Reduced ydiagram of (%s) is (%s)", 
+          yd.map!(x => to!string(x)).join(","),
+          tmp.map!(x => to!string(x)).join(","));
+      return tmp;
+    }
+
   }
 
   int n, k;
@@ -81,40 +94,44 @@ struct Graph {
     // connect-four logic: can choose any row that is < the one above it
     // note: this corresponds to incrementing a coordinate in the corresponding
     // tuple representation of the diagram
-    foreach( level; 0 .. (k*(n-k)) ){
+    foreach( level; 0 .. (k*(n-k))+1 ){
       foreach( level_node; 0 .. nodes[level].length ){
         // cursor is the ydiagram we are mutating
         cursor = nodes[level][level_node];
 
-        // loop over the rows of cursor, at most k of them
-        foreach( row; 0 .. k ){
-          // tmp is the next possible ydiagram, mutated from cursor
-          // start tmp as a new node to avoid dup edges
-          auto tmp = new node;
-          tmp.yd = cursor.yd.dup;
+        if ( level < (k*(n-k))+1 ){
+          // loop over the rows of cursor, at most k of them
+          foreach( row; 0 .. k ){
+            // tmp is the next possible ydiagram, mutated from cursor
+            // start tmp as a new node to avoid dup edges
+            auto tmp = new node;
+            tmp.yd = cursor.yd.dup;
 
-          // check to see if we can add a block to row i
-          if( 
-              (row == 0 && tmp.yd[row] < n - k) ||    // the top row
-              (row > 0 && tmp.yd[row] < tmp.yd[row-1])  // an inside row
-            ){
+            // check to see if we can add a block to row i
+            if( 
+                (row == 0 && tmp.yd[row] < n - k) ||    // the top row
+                (row > 0 && tmp.yd[row] < tmp.yd[row-1])  // an inside row
+              ){
 
-            tmp.yd[row]++; // add a block to that row
-            auto found = containsSame(level+1, tmp);
-            if( found ){
-              cursor.downs ~= found;
-            } else {
-              tmp.coords = [level+1, nodes[level+1].length];
-              nodes[level+1] ~= tmp;
-              cursor.downs ~= tmp;
+              tmp.yd[row]++; // add a block to that row
+              auto found = containsSame(level+1, tmp);
+              if( found ){
+                cursor.downs ~= found;
+              } else {
+                tmp.coords = [level+1, nodes[level+1].length];
+                nodes[level+1] ~= tmp;
+                cursor.downs ~= tmp;
+              }
             }
           }
         }
 
+        // TODO: pull this out and parameterize so we can remove the if
+        //       above
         // TODO: this is ridiculous... stop using pointers
-        // and start using the yd to identify nodes
-        if( isRowFull(cursor) && isColFull(cursor) ){
-          ydiagram red = cursor.getReduced();
+        //       and start using the yd to identify nodes
+        if( isTwoRowFull(cursor) && isTwoColFull(cursor) ){
+          ydiagram red = cursor.getTwoReduced();
           foreach( j; 0 .. level ){
             foreach( l; 0 .. nodes[j].length ){
               if( nodes[j][l].yd == red ){
@@ -243,6 +260,16 @@ struct Graph {
   // all cols are used
   bool isColFull(node* n){
     return n.yd[0] == this.n-this.k; 
+  }
+
+  // all rows are used
+  bool isTwoRowFull(node* n){
+    return n.yd[$-1] > 0 && n.yd[$-2] > 0;
+  }
+
+  // all cols are used
+  bool isTwoColFull(node* n){
+    return n.yd[0] == this.n-this.k && n.yd[1] == this.n - this.k; 
   }
 }
 
